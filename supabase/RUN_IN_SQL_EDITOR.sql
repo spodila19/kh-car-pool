@@ -96,3 +96,12 @@ DROP POLICY IF EXISTS "Rides read" ON public.rides;
 CREATE POLICY "Rides read" ON public.rides FOR SELECT
   TO authenticated
   USING (true);
+
+
+-- ------------------------------------------------------------
+-- 7. Ride requests read: use TO authenticated (so driver sees pending requests)
+-- ------------------------------------------------------------
+DROP POLICY IF EXISTS "Requests read" ON public.ride_requests;
+CREATE POLICY "Requests read" ON public.ride_requests FOR SELECT
+  TO authenticated
+  USING (true);

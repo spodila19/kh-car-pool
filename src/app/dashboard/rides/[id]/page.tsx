@@ -44,21 +44,27 @@ export default async function RideDetailPage({
 
   const { data: requests } = await supabase
     .from('ride_requests')
-    .select(`
-      id,
-      user_id,
-      pickup_place,
-      pickup_lat,
-      pickup_lng,
-      status,
-      boarded_at,
-      created_at,
-      profiles ( display_name, phone, show_phone )
-    `)
+    .select('id, user_id, pickup_place, pickup_lat, pickup_lng, status, boarded_at, created_at')
     .eq('ride_id', id)
     .order('created_at', { ascending: false });
 
-  const myRequest = requests?.find((r: any) => r.user_id === user.id);
+  const requesterIds = Array.from(new Set((requests ?? []).map((r: { user_id: string }) => r.user_id)));
+  const { data: requesterProfiles } =
+    requesterIds.length > 0
+      ? await supabase.from('profiles').select('id, display_name, phone, show_phone').in('id', requesterIds)
+      : { data: [] };
+  const requesterProfileMap = Object.fromEntries(
+    (requesterProfiles ?? []).map((p: { id: string; display_name: string; phone: string | null; show_phone: boolean }) => [
+      p.id,
+      { display_name: p.display_name, phone: p.phone, show_phone: p.show_phone },
+    ])
+  );
+  const requestsWithProfiles = (requests ?? []).map((r: any) => ({
+    ...r,
+    profiles: requesterProfileMap[r.user_id] ?? null,
+  }));
+
+  const myRequest = requestsWithProfiles.find((r: { user_id: string }) => r.user_id === user.id);
   const isDriver = rideWithProfile.driver_id === user.id;
   const isApproved = myRequest?.status === 'approved';
   const canRequest = !isDriver && !myRequest && rideWithProfile.status !== 'cancelled' && rideWithProfile.seats_available > 0;
@@ -147,7 +153,7 @@ export default async function RideDetailPage({
           </div>
         )}
 
-        {isDriver && requests && requests.length > 0 && (
+        {isDriver && requestsWithProfiles.length > 0 && (
           <div className="p-4">
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-medium text-slate-800 dark:text-slate-200">Requests</h3>
@@ -156,7 +162,7 @@ export default async function RideDetailPage({
               </span>
             </div>
             <ul className="space-y-2">
-              {requests.map((req: any) => (
+              {requestsWithProfiles.map((req: any) => (
                 <li
                   key={req.id}
                   className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-700 last:border-0"
