@@ -26,16 +26,21 @@ export default async function RideDetailPage({
     .eq('id', user.id)
     .single();
 
-  const { data: ride } = await supabase
+  const { data: ride, error: rideError } = await supabase
     .from('rides')
-    .select(`
-      *,
-      profiles ( display_name, phone, show_phone )
-    `)
+    .select('*')
     .eq('id', id)
     .single();
 
-  if (!ride) notFound();
+  if (rideError || !ride) notFound();
+
+  const { data: driverProfile } = await supabase
+    .from('profiles')
+    .select('display_name, phone, show_phone')
+    .eq('id', ride.driver_id)
+    .single();
+
+  const rideWithProfile = { ...ride, profiles: driverProfile };
 
   const { data: requests } = await supabase
     .from('ride_requests')
@@ -54,9 +59,9 @@ export default async function RideDetailPage({
     .order('created_at', { ascending: false });
 
   const myRequest = requests?.find((r: any) => r.user_id === user.id);
-  const isDriver = ride.driver_id === user.id;
+  const isDriver = rideWithProfile.driver_id === user.id;
   const isApproved = myRequest?.status === 'approved';
-  const canRequest = !isDriver && !myRequest && ride.status !== 'cancelled' && ride.seats_available > 0;
+  const canRequest = !isDriver && !myRequest && rideWithProfile.status !== 'cancelled' && rideWithProfile.seats_available > 0;
   const hasPhone = !!myProfile?.phone?.trim();
 
   return (
@@ -67,46 +72,46 @@ export default async function RideDetailPage({
       <div className="rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="p-4 border-b border-slate-200 dark:border-slate-700">
           <p className="font-medium text-slate-800 dark:text-slate-200">
-            {ride.from_place} → {ride.to_place}
+            {rideWithProfile.from_place} → {rideWithProfile.to_place}
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {format(new Date(ride.departure_time), 'EEEE, d MMMM yyyy · h:mm a')}
+            {format(new Date(rideWithProfile.departure_time), 'EEEE, d MMMM yyyy · h:mm a')}
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Ride host: {ride.profiles?.display_name ?? '—'}
-            {ride.profiles?.show_phone !== false && ride.profiles?.phone && (
-              <span className="ml-2">· {ride.profiles.phone}</span>
+            Ride host: {rideWithProfile.profiles?.display_name ?? '—'}
+            {rideWithProfile.profiles?.show_phone !== false && rideWithProfile.profiles?.phone && (
+              <span className="ml-2">· {rideWithProfile.profiles.phone}</span>
             )}
           </p>
           <p className="text-xs text-slate-400 mt-1">
-            {ride.seats_available} of {ride.seats_total ?? ride.seats_available} seat{(ride.seats_total ?? ride.seats_available) !== 1 ? 's' : ''} remaining · {ride.status}
+            {rideWithProfile.seats_available} of {rideWithProfile.seats_total ?? rideWithProfile.seats_available} seat{(rideWithProfile.seats_total ?? rideWithProfile.seats_available) !== 1 ? 's' : ''} remaining · {rideWithProfile.status}
           </p>
-          {ride.notes && (
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 italic">{ride.notes}</p>
+          {rideWithProfile.notes && (
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 italic">{rideWithProfile.notes}</p>
           )}
         </div>
 
-        {isDriver && ride.status === 'scheduled' && (
+        {isDriver && rideWithProfile.status === 'scheduled' && (
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
             <h3 className="font-medium text-slate-800 dark:text-slate-200 mb-3">Ready to go?</h3>
-            <DriverRideActions rideId={ride.id} />
+            <DriverRideActions rideId={rideWithProfile.id} />
           </div>
         )}
-        {isDriver && ride.status === 'cancelled' && (
+        {isDriver && rideWithProfile.status === 'cancelled' && (
           <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-700/30">
             <p className="text-sm text-slate-600 dark:text-slate-400">This ride has been cancelled.</p>
           </div>
         )}
-        {(isDriver || isApproved) && ride.status === 'active' && (
+        {(isDriver || isApproved) && rideWithProfile.status === 'active' && (
           <div className="p-4 bg-primary-50 dark:bg-primary-900/20 border-b border-slate-200 dark:border-slate-700 space-y-2">
-            <LiveTrackLink rideId={ride.id} isDriver={isDriver} />
+            <LiveTrackLink rideId={rideWithProfile.id} isDriver={isDriver} />
             {isApproved && !myRequest?.boarded_at && (
               <MarkAsBoardedButton requestId={myRequest.id} />
             )}
-            {isDriver && <EndRideButton rideId={ride.id} />}
+            {isDriver && <EndRideButton rideId={rideWithProfile.id} />}
           </div>
         )}
-        {ride.status === 'completed' && (
+        {rideWithProfile.status === 'completed' && (
           <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-700/30">
             <p className="text-sm text-slate-600 dark:text-slate-400">This ride has been completed.</p>
           </div>
@@ -121,7 +126,7 @@ export default async function RideDetailPage({
         )}
         {canRequest && hasPhone && (
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
-            <RequestRideButton rideId={ride.id} />
+            <RequestRideButton rideId={rideWithProfile.id} />
           </div>
         )}
 
@@ -129,11 +134,11 @@ export default async function RideDetailPage({
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
             <p className="text-sm">
               Your request: <strong className="capitalize">{myRequest.status}</strong>
-              {(myRequest.status === 'approved' || myRequest.status === 'pending') && ride.status !== 'cancelled' && ride.status !== 'completed' && (
+              {(myRequest.status === 'approved' || myRequest.status === 'pending') && rideWithProfile.status !== 'cancelled' && rideWithProfile.status !== 'completed' && (
                 <span className="block mt-2">
                   <WithdrawRequestButton
                     requestId={myRequest.id}
-                    rideId={ride.id}
+                    rideId={rideWithProfile.id}
                     currentStatus={myRequest.status}
                   />
                 </span>
@@ -147,7 +152,7 @@ export default async function RideDetailPage({
             <div className="flex items-center justify-between mb-2">
               <h3 className="font-medium text-slate-800 dark:text-slate-200">Requests</h3>
               <span className="text-sm text-slate-500 dark:text-slate-400">
-                {ride.seats_available} of {ride.seats_total ?? ride.seats_available} seat{(ride.seats_total ?? ride.seats_available) !== 1 ? 's' : ''} remaining
+                {rideWithProfile.seats_available} of {rideWithProfile.seats_total ?? rideWithProfile.seats_available} seat{(rideWithProfile.seats_total ?? rideWithProfile.seats_available) !== 1 ? 's' : ''} remaining
               </span>
             </div>
             <ul className="space-y-2">
@@ -173,8 +178,8 @@ export default async function RideDetailPage({
                   <ApproveRejectButtons
                     requestId={req.id}
                     status={req.status}
-                    rideId={ride.id}
-                    seatsAvailable={ride.seats_available}
+                    rideId={rideWithProfile.id}
+                    seatsAvailable={rideWithProfile.seats_available}
                   />
                 </li>
               ))}
