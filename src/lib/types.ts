@@ -1,5 +1,5 @@
 export type RideStatus = 'scheduled' | 'active' | 'completed' | 'cancelled';
-export type RequestStatus = 'pending' | 'approved' | 'rejected';
+export type RequestStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
 
 export interface Profile {
   id: string;
@@ -22,6 +22,7 @@ export interface Ride {
   to_lng: number | null;
   departure_time: string;
   seats_available: number;
+  seats_total?: number;
   status: RideStatus;
   notes: string | null;
   created_at: string;

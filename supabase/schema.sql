@@ -26,7 +26,8 @@ create table if not exists public.rides (
   to_lat double precision,
   to_lng double precision,
   departure_time timestamptz not null,
-  seats_available int not null default 3 check (seats_available >= 1),
+  seats_available int not null default 3 check (seats_available >= 0),
+  seats_total int not null default 3 check (seats_total >= 1),
   status text not null default 'scheduled' check (status in ('scheduled', 'active', 'completed', 'cancelled')),
   notes text,
   created_at timestamptz not null default now(),
@@ -41,7 +42,7 @@ create table if not exists public.ride_requests (
   pickup_place text,
   pickup_lat double precision,
   pickup_lng double precision,
-  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected')),
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'withdrawn')),
   created_at timestamptz not null default now(),
   unique(ride_id, user_id)
 );
@@ -85,6 +86,7 @@ create policy "Requests insert" on public.ride_requests for insert with check (a
 create policy "Requests update driver" on public.ride_requests for update using (
   exists (select 1 from public.rides r where r.id = ride_id and r.driver_id = auth.uid())
 );
+create policy "Requests update own withdraw" on public.ride_requests for update using (auth.uid() = user_id);
 create policy "Requests delete own" on public.ride_requests for delete using (auth.uid() = user_id);
 
 -- Driver locations: driver can upsert own; riders approved for that ride can read

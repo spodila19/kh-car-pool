@@ -50,7 +50,8 @@ export function ApproveRejectButtons({
       <button
         type="button"
         onClick={handleApprove}
-        disabled={loading}
+        disabled={loading || seatsAvailable < 1}
+        title={seatsAvailable < 1 ? 'No seats remaining' : undefined}
         className="px-3 py-1.5 rounded-lg bg-accent-green text-white text-sm font-medium disabled:opacity-50"
       >
         Approve

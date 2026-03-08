@@ -104,7 +104,7 @@ export default function ProfilePage() {
             className="w-full px-4 py-2 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800"
           />
           <p className="text-xs text-slate-500 mt-1">
-            Required. Shown to drivers and other riders only if you enable it below.
+            Required. Shown to ride hosts and other riders only if you enable it below.
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -116,7 +116,7 @@ export default function ProfilePage() {
             className="rounded border-slate-300 text-primary-600 focus:ring-primary-500"
           />
           <label htmlFor="show_phone" className="text-sm text-slate-700 dark:text-slate-300">
-            Show my mobile number to drivers and other riders
+            Show my mobile number to ride hosts and other riders
           </label>
         </div>
         {error && <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>}

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import 'leaflet/dist/leaflet.css';
 
 const TrackMap = dynamic(() => import('./TrackMap'), { ssr: false });
 
@@ -50,7 +51,7 @@ export default function TrackPage() {
       if (rideData.status !== 'active') {
         setError(driver
           ? 'Start the ride from the ride page to begin sharing your location.'
-          : 'Live tracking is available after the driver starts the ride.');
+          : 'Live tracking is available after the ride host starts the ride.');
         return;
       }
       setRide(rideData);

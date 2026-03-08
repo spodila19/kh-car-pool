@@ -12,6 +12,7 @@ export default async function DashboardPage() {
       to_place,
       departure_time,
       seats_available,
+      seats_total,
       status,
       profiles ( display_name )
     `)
@@ -54,7 +55,7 @@ export default async function DashboardPage() {
                       {format(new Date(ride.departure_time), 'EEE, d MMM · h:mm a')}
                     </p>
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                      {ride.profiles?.display_name ?? 'Driver'} · {ride.seats_available} seat{ride.seats_available !== 1 ? 's' : ''}
+                      {ride.profiles?.display_name ?? 'Ride host'} · {ride.seats_available} of {ride.seats_total ?? ride.seats_available} seat{(ride.seats_total ?? ride.seats_available) !== 1 ? 's' : ''} remaining
                     </p>
                   </div>
                   <span

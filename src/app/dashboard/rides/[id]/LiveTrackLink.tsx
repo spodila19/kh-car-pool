@@ -15,7 +15,7 @@ export function LiveTrackLink({
       className="inline-flex items-center gap-2 text-primary-700 dark:text-primary-400 font-medium text-sm"
     >
       <span className="inline-block w-2 h-2 rounded-full bg-accent-green animate-pulse" />
-      {isDriver ? 'Share your location' : 'Live track driver'}
+      {isDriver ? 'Share your location' : 'Live track ride host'}
     </Link>
   );
 }

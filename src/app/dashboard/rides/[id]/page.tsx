@@ -7,6 +7,7 @@ import { LiveTrackLink } from './LiveTrackLink';
 import { ApproveRejectButtons } from './ApproveRejectButtons';
 import { DriverRideActions } from './DriverRideActions';
 import { EndRideButton } from './EndRideButton';
+import { WithdrawRequestButton } from './WithdrawRequestButton';
 
 export default async function RideDetailPage({
   params,
@@ -68,13 +69,13 @@ export default async function RideDetailPage({
             {format(new Date(ride.departure_time), 'EEEE, d MMMM yyyy · h:mm a')}
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Driver: {ride.profiles?.display_name ?? '—'}
+            Ride host: {ride.profiles?.display_name ?? '—'}
             {ride.profiles?.show_phone !== false && ride.profiles?.phone && (
               <span className="ml-2">· {ride.profiles.phone}</span>
             )}
           </p>
           <p className="text-xs text-slate-400 mt-1">
-            {ride.seats_available} seat{ride.seats_available !== 1 ? 's' : ''} · {ride.status}
+            {ride.seats_available} of {ride.seats_total ?? ride.seats_available} seat{(ride.seats_total ?? ride.seats_available) !== 1 ? 's' : ''} remaining · {ride.status}
           </p>
           {ride.notes && (
             <p className="text-sm text-slate-600 dark:text-slate-400 mt-2 italic">{ride.notes}</p>
@@ -120,14 +121,28 @@ export default async function RideDetailPage({
         {myRequest && (
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
             <p className="text-sm">
-              Your request: <strong>{myRequest.status}</strong>
+              Your request: <strong className="capitalize">{myRequest.status}</strong>
+              {(myRequest.status === 'approved' || myRequest.status === 'pending') && ride.status !== 'cancelled' && ride.status !== 'completed' && (
+                <span className="block mt-2">
+                  <WithdrawRequestButton
+                    requestId={myRequest.id}
+                    rideId={ride.id}
+                    currentStatus={myRequest.status}
+                  />
+                </span>
+              )}
             </p>
           </div>
         )}
 
         {isDriver && requests && requests.length > 0 && (
           <div className="p-4">
-            <h3 className="font-medium text-slate-800 dark:text-slate-200 mb-2">Requests</h3>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="font-medium text-slate-800 dark:text-slate-200">Requests</h3>
+              <span className="text-sm text-slate-500 dark:text-slate-400">
+                {ride.seats_available} of {ride.seats_total ?? ride.seats_available} seat{(ride.seats_total ?? ride.seats_available) !== 1 ? 's' : ''} remaining
+              </span>
+            </div>
             <ul className="space-y-2">
               {requests.map((req: any) => (
                 <li

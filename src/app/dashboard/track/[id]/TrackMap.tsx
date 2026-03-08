@@ -7,6 +7,18 @@ import type { DriverLocation } from '@/lib/types';
 const DEFAULT_CENTER: [number, number] = [17.385, 78.4867];
 const DEFAULT_ZOOM = 12;
 
+// CartoDB Voyager - free, no API key, often more reliable than OSM tiles
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png';
+
+// Fix Leaflet default marker icon (breaks with Next.js/Webpack)
+const MARKER_ICON = {
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+};
+
 export default function TrackMap({ rideId, isDriver }: { rideId: string; isDriver: boolean }) {
   const [location, setLocation] = useState<DriverLocation | null>(null);
   const [mapEl, setMapEl] = useState<HTMLDivElement | null>(null);
@@ -40,9 +52,8 @@ export default function TrackMap({ rideId, isDriver }: { rideId: string; isDrive
     if (!mapEl || typeof window === 'undefined') return;
     import('leaflet').then((L) => {
       const map = L.default.map(mapEl).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
-      L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
-      }).addTo(map);
+      const layer = L.default.tileLayer(TILE_URL, { attribution: '© OpenStreetMap © CARTO' });
+      layer.addTo(map);
       let marker: ReturnType<typeof L.default.marker> | null = null;
       mapRef.current = { map, marker };
     });
@@ -58,10 +69,11 @@ export default function TrackMap({ rideId, isDriver }: { rideId: string; isDrive
     const ref = mapRef.current;
     if (!ref || !location) return;
     import('leaflet').then((L) => {
+      const icon = L.default.icon(MARKER_ICON);
       if (!ref.marker) {
-        ref.marker = L.default.marker([location.lat, location.lng])
+        ref.marker = L.default.marker([location.lat, location.lng], { icon })
           .addTo(ref.map)
-          .bindPopup(isDriver ? 'Your location' : 'Driver');
+          .bindPopup(isDriver ? 'Your location' : 'Ride host');
       } else {
         ref.marker.setLatLng([location.lat, location.lng]);
       }

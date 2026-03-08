@@ -40,12 +40,14 @@ export default function NewRidePage() {
       return;
     }
     setLoading(true);
+    const seats = Math.max(1, form.seats_available);
     const { error: err } = await supabase.from('rides').insert({
       driver_id: user.id,
       from_place: form.from_place.trim(),
       to_place: form.to_place.trim(),
       departure_time: departure.toISOString(),
-      seats_available: Math.max(1, form.seats_available),
+      seats_available: seats,
+      seats_total: seats,
       notes: form.notes.trim() || null,
     });
     setLoading(false);
