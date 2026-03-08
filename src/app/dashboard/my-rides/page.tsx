@@ -11,8 +11,17 @@ export default async function MyRidesPage() {
     .from('rides')
     .select('id, from_place, to_place, departure_time, status, seats_available')
     .eq('driver_id', user.id)
-    .order('departure_time', { ascending: false })
+    .in('status', ['scheduled', 'active'])
+    .order('departure_time', { ascending: true })
     .limit(20);
+
+  const { data: drivenPast } = await supabase
+    .from('rides')
+    .select('id, from_place, to_place, departure_time, status')
+    .eq('driver_id', user.id)
+    .in('status', ['completed', 'cancelled'])
+    .order('departure_time', { ascending: false })
+    .limit(10);
 
   const { data: requests } = await supabase
     .from('ride_requests')
@@ -35,7 +44,7 @@ export default async function MyRidesPage() {
       <section className="mb-8">
         <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Rides I’m driving</h2>
         {!driven?.length ? (
-          <p className="text-slate-500 dark:text-slate-400 text-sm">You haven’t offered any rides yet.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm">No upcoming rides. Offer a ride from the dashboard.</p>
         ) : (
           <ul className="space-y-3">
             {driven.map((ride: any) => (
@@ -56,6 +65,29 @@ export default async function MyRidesPage() {
           </ul>
         )}
       </section>
+
+      {drivenPast && drivenPast.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Past rides</h2>
+          <ul className="space-y-3">
+            {drivenPast.map((ride: any) => (
+              <li key={ride.id}>
+                <Link
+                  href={`/dashboard/rides/${ride.id}`}
+                  className="block rounded-2xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-4 opacity-75"
+                >
+                  <p className="font-medium text-slate-800 dark:text-slate-200">
+                    {ride.from_place} → {ride.to_place}
+                  </p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {format(new Date(ride.departure_time), 'EEE, d MMM · h:mm a')} · {ride.status}
+                  </p>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section>
         <h2 className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-3">Rides I requested</h2>
