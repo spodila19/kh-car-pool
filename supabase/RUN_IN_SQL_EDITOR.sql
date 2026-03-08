@@ -48,3 +48,42 @@ ALTER TABLE public.rides ALTER COLUMN seats_total SET NOT NULL;
 
 ALTER TABLE public.rides DROP CONSTRAINT IF EXISTS rides_seats_available_check;
 ALTER TABLE public.rides ADD CONSTRAINT rides_seats_available_check CHECK (seats_available >= 0);
+
+
+-- ------------------------------------------------------------
+-- 4. Add boarded_at (for "Mark as boarded" when rider gets in)
+-- ------------------------------------------------------------
+ALTER TABLE public.ride_requests
+  ADD COLUMN IF NOT EXISTS boarded_at timestamptz;
+
+
+-- ------------------------------------------------------------
+-- 5. Add rider_locations (riders share location so host can see where they're waiting)
+-- ------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.rider_locations (
+  ride_id uuid NOT NULL REFERENCES public.rides(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  lat double precision NOT NULL,
+  lng double precision NOT NULL,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (ride_id, user_id)
+);
+
+ALTER TABLE public.rider_locations ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Rider locations read driver" ON public.rider_locations;
+CREATE POLICY "Rider locations read driver" ON public.rider_locations FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.rides r WHERE r.id = ride_id AND r.driver_id = auth.uid())
+);
+
+DROP POLICY IF EXISTS "Rider locations upsert own" ON public.rider_locations;
+CREATE POLICY "Rider locations upsert own" ON public.rider_locations FOR ALL USING (
+  auth.uid() = user_id
+) WITH CHECK (auth.uid() = user_id);
+
+DO $$
+BEGIN
+  ALTER PUBLICATION supabase_realtime ADD TABLE public.rider_locations;
+EXCEPTION WHEN duplicate_object THEN
+  NULL;  /* already in publication - ignore */
+END $$;

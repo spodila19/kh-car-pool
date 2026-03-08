@@ -43,6 +43,7 @@ create table if not exists public.ride_requests (
   pickup_lat double precision,
   pickup_lng double precision,
   status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'withdrawn')),
+  boarded_at timestamptz,
   created_at timestamptz not null default now(),
   unique(ride_id, user_id)
 );
@@ -54,6 +55,16 @@ create table if not exists public.driver_locations (
   lat double precision not null,
   lng double precision not null,
   updated_at timestamptz not null default now()
+);
+
+-- Live rider locations (approved riders share where they're waiting; host can see)
+create table if not exists public.rider_locations (
+  ride_id uuid not null references public.rides(id) on delete cascade,
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  lat double precision not null,
+  lng double precision not null,
+  updated_at timestamptz not null default now(),
+  primary key (ride_id, user_id)
 );
 
 -- Indexes
@@ -68,6 +79,7 @@ alter table public.profiles enable row level security;
 alter table public.rides enable row level security;
 alter table public.ride_requests enable row level security;
 alter table public.driver_locations enable row level security;
+alter table public.rider_locations enable row level security;
 
 -- Profiles: users can read all (to see driver names), update own
 create policy "Profiles read" on public.profiles for select using (true);
@@ -101,6 +113,14 @@ create policy "Locations upsert driver" on public.driver_locations for all using
   auth.uid() = driver_id
 );
 
+-- Rider locations: rider can upsert own; driver can read all for their ride
+create policy "Rider locations read driver" on public.rider_locations for select using (
+  exists (select 1 from public.rides r where r.id = ride_id and r.driver_id = auth.uid())
+);
+create policy "Rider locations upsert own" on public.rider_locations for all using (
+  auth.uid() = user_id
+) with check (auth.uid() = user_id);
+
 -- Create profile on signup
 create or replace function public.handle_new_user()
 returns trigger as $$
@@ -115,5 +135,6 @@ create or replace trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
 
--- Realtime: allow subscribing to driver_locations for approved riders
+-- Realtime: allow subscribing to driver_locations and rider_locations
 alter publication supabase_realtime add table public.driver_locations;
+alter publication supabase_realtime add table public.rider_locations;

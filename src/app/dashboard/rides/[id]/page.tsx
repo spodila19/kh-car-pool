@@ -8,6 +8,7 @@ import { ApproveRejectButtons } from './ApproveRejectButtons';
 import { DriverRideActions } from './DriverRideActions';
 import { EndRideButton } from './EndRideButton';
 import { WithdrawRequestButton } from './WithdrawRequestButton';
+import { MarkAsBoardedButton } from '@/components/MarkAsBoardedButton';
 
 export default async function RideDetailPage({
   params,
@@ -42,7 +43,10 @@ export default async function RideDetailPage({
       id,
       user_id,
       pickup_place,
+      pickup_lat,
+      pickup_lng,
       status,
+      boarded_at,
       created_at,
       profiles ( display_name, phone, show_phone )
     `)
@@ -94,8 +98,11 @@ export default async function RideDetailPage({
           </div>
         )}
         {(isDriver || isApproved) && ride.status === 'active' && (
-          <div className="p-4 bg-primary-50 dark:bg-primary-900/20 border-b border-slate-200 dark:border-slate-700">
+          <div className="p-4 bg-primary-50 dark:bg-primary-900/20 border-b border-slate-200 dark:border-slate-700 space-y-2">
             <LiveTrackLink rideId={ride.id} isDriver={isDriver} />
+            {isApproved && !myRequest?.boarded_at && (
+              <MarkAsBoardedButton requestId={myRequest.id} />
+            )}
             {isDriver && <EndRideButton rideId={ride.id} />}
           </div>
         )}
@@ -152,6 +159,9 @@ export default async function RideDetailPage({
                   <div>
                     <p className="font-medium text-slate-800 dark:text-slate-200">
                       {req.profiles?.display_name ?? 'Requester'}
+                      {req.boarded_at && (
+                        <span className="ml-2 text-xs font-normal text-accent-green">· Boarded</span>
+                      )}
                     </p>
                     {req.pickup_place && (
                       <p className="text-xs text-slate-500">Pickup: {req.pickup_place}</p>

@@ -49,3 +49,12 @@ export interface DriverLocation {
   lng: number;
   updated_at: string;
 }
+
+export interface RiderLocation {
+  ride_id: string;
+  user_id: string;
+  lat: number;
+  lng: number;
+  updated_at: string;
+  profiles?: { display_name: string } | null;
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import type { DriverLocation } from '@/lib/types';
+import type { DriverLocation, RiderLocation } from '@/lib/types';
 
 const DEFAULT_CENTER: [number, number] = [17.385, 78.4867];
 const DEFAULT_ZOOM = 12;
@@ -19,11 +19,21 @@ const MARKER_ICON = {
   iconAnchor: [12, 41] as [number, number],
 };
 
-export default function TrackMap({ rideId, isDriver }: { rideId: string; isDriver: boolean }) {
+export default function TrackMap({
+  rideId,
+  isDriver,
+  pickupLocation,
+}: {
+  rideId: string;
+  isDriver: boolean;
+  pickupLocation?: { lat: number; lng: number } | null;
+}) {
   const [location, setLocation] = useState<DriverLocation | null>(null);
+  const [riderLocations, setRiderLocations] = useState<RiderLocation[]>([]);
+  const [riderLocation, setRiderLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapEl, setMapEl] = useState<HTMLDivElement | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const mapRef = useRef<{ map: any; marker: any } | null>(null);
+  const mapRef = useRef<{ map: any; marker: any; riderMarkers: Map<string, any>; riderMarker: any; pickupMarker: any } | null>(null);
   const supabase = createClient();
 
   useEffect(() => {
@@ -49,13 +59,36 @@ export default function TrackMap({ rideId, isDriver }: { rideId: string; isDrive
   }, [rideId, supabase]);
 
   useEffect(() => {
+    if (!isDriver) return;
+    const channel = supabase
+      .channel(`rider_locations:${rideId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'rider_locations', filter: `ride_id=eq.${rideId}` },
+        () => {
+          supabase.from('rider_locations').select('*, profiles(display_name)').eq('ride_id', rideId).then(({ data }) => {
+            setRiderLocations((data as RiderLocation[]) ?? []);
+          });
+        }
+      )
+      .subscribe();
+
+    supabase.from('rider_locations').select('*, profiles(display_name)').eq('ride_id', rideId).then(({ data }) => {
+      setRiderLocations((data as RiderLocation[]) ?? []);
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [rideId, isDriver, supabase]);
+
+  useEffect(() => {
     if (!mapEl || typeof window === 'undefined') return;
     import('leaflet').then((L) => {
       const map = L.default.map(mapEl).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
       const layer = L.default.tileLayer(TILE_URL, { attribution: '© OpenStreetMap © CARTO' });
       layer.addTo(map);
-      let marker: ReturnType<typeof L.default.marker> | null = null;
-      mapRef.current = { map, marker };
+      mapRef.current = { map, marker: null, riderMarkers: new Map(), riderMarker: null, pickupMarker: null };
     });
     return () => {
       if (mapRef.current) {
@@ -65,21 +98,81 @@ export default function TrackMap({ rideId, isDriver }: { rideId: string; isDrive
     };
   }, [mapEl]);
 
+  // Rider: get own location for "You" marker
+  useEffect(() => {
+    if (isDriver) return;
+    if (!navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (pos) => setRiderLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => {}
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [isDriver]);
+
   useEffect(() => {
     const ref = mapRef.current;
-    if (!ref || !location) return;
+    if (!ref) return;
     import('leaflet').then((L) => {
       const icon = L.default.icon(MARKER_ICON);
-      if (!ref.marker) {
-        ref.marker = L.default.marker([location.lat, location.lng], { icon })
-          .addTo(ref.map)
-          .bindPopup(isDriver ? 'Your location' : 'Ride host');
-      } else {
-        ref.marker.setLatLng([location.lat, location.lng]);
+      if (location) {
+        if (!ref.marker) {
+          ref.marker = L.default.marker([location.lat, location.lng], { icon })
+            .addTo(ref.map)
+            .bindPopup(isDriver ? 'Your location' : 'Ride host');
+        } else {
+          ref.marker.setLatLng([location.lat, location.lng]);
+        }
+        ref.map.setView([location.lat, location.lng], ref.map.getZoom());
       }
-      ref.map.setView([location.lat, location.lng], ref.map.getZoom());
+      if (isDriver && riderLocations.length > 0) {
+        const riderIcon = L.default.divIcon({
+          html: '<div style="background:#059669;width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>',
+          className: '',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+        riderLocations.forEach((rl) => {
+          const key = rl.user_id;
+          if (!ref.riderMarkers.has(key)) {
+            const m = L.default.marker([rl.lat, rl.lng], { icon: riderIcon })
+              .addTo(ref.map)
+              .bindPopup(rl.profiles?.display_name ?? 'Rider waiting');
+            ref.riderMarkers.set(key, m);
+          } else {
+            ref.riderMarkers.get(key).setLatLng([rl.lat, rl.lng]);
+          }
+        });
+      }
+      if (!isDriver && riderLocation) {
+        const riderIcon = L.default.divIcon({
+          html: '<div style="background:#059669;width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>',
+          className: '',
+          iconSize: [16, 16],
+          iconAnchor: [8, 8],
+        });
+        if (!ref.riderMarker) {
+          ref.riderMarker = L.default.marker([riderLocation.lat, riderLocation.lng], { icon: riderIcon })
+            .addTo(ref.map)
+            .bindPopup('You');
+        } else {
+          ref.riderMarker.setLatLng([riderLocation.lat, riderLocation.lng]);
+        }
+      }
+      if (!isDriver && pickupLocation) {
+        const pickupIcon = L.default.divIcon({
+          html: '<div style="background:#ea580c;width:14px;height:14px;border-radius:50%;border:2px solid white;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>',
+          className: '',
+          iconSize: [14, 14],
+          iconAnchor: [7, 7],
+        });
+        if (!ref.pickupMarker) {
+          ref.pickupMarker = L.default.marker([pickupLocation.lat, pickupLocation.lng], { icon: pickupIcon })
+            .addTo(ref.map)
+            .bindPopup('Your pickup');
+        }
+      }
     });
-  }, [location, isDriver]);
+  }, [location, isDriver, riderLocation, riderLocations, pickupLocation]);
 
   return (
     <div

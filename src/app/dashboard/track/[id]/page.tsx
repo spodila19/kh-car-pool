@@ -8,6 +8,7 @@ import Link from 'next/link';
 import 'leaflet/dist/leaflet.css';
 
 const TrackMap = dynamic(() => import('./TrackMap'), { ssr: false });
+import { MarkAsBoardedButton } from '@/components/MarkAsBoardedButton';
 
 export default function TrackPage() {
   const params = useParams();
@@ -15,6 +16,7 @@ export default function TrackPage() {
   const rideId = params?.id as string;
   const [ride, setRide] = useState<{ from_place: string; to_place: string; driver_id: string; status: string } | null>(null);
   const [isDriver, setIsDriver] = useState(false);
+  const [myRequest, setMyRequest] = useState<{ id: string; boarded_at: string | null; pickup_lat: number | null; pickup_lng: number | null } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const supabase = createClient();
   const locationInterval = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -39,7 +41,7 @@ export default function TrackPage() {
       const driver = rideData.driver_id === user.id;
       const { data: approved } = await supabase
         .from('ride_requests')
-        .select('id')
+        .select('id, boarded_at, pickup_lat, pickup_lng')
         .eq('ride_id', rideId)
         .eq('user_id', user.id)
         .eq('status', 'approved')
@@ -56,6 +58,7 @@ export default function TrackPage() {
       }
       setRide(rideData);
       setIsDriver(driver);
+      if (!driver && approved) setMyRequest(approved);
 
       if (driver) {
         const sendLocation = () => {
@@ -75,6 +78,24 @@ export default function TrackPage() {
         };
         sendLocation();
         locationInterval.current = setInterval(sendLocation, 5000);
+      } else if (approved) {
+        const sendRiderLocation = () => {
+          if (!navigator.geolocation) return;
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              supabase.from('rider_locations').upsert({
+                ride_id: rideId,
+                user_id: user.id,
+                lat: pos.coords.latitude,
+                lng: pos.coords.longitude,
+                updated_at: new Date().toISOString(),
+              });
+            },
+            () => {}
+          );
+        };
+        sendRiderLocation();
+        locationInterval.current = setInterval(sendRiderLocation, 5000);
       }
     })();
     return () => {
@@ -113,8 +134,17 @@ export default function TrackPage() {
         </span>
       </div>
       <div className="flex-1 min-h-0">
-        <TrackMap rideId={rideId} isDriver={isDriver} />
+        <TrackMap
+          rideId={rideId}
+          isDriver={isDriver}
+          pickupLocation={!isDriver && myRequest?.pickup_lat && myRequest?.pickup_lng ? { lat: myRequest.pickup_lat, lng: myRequest.pickup_lng } : null}
+        />
       </div>
+      {!isDriver && myRequest && !myRequest.boarded_at && (
+        <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 safe-bottom">
+          <MarkAsBoardedButton requestId={myRequest.id} />
+        </div>
+      )}
     </div>
   );
 }
