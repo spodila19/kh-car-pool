@@ -1,4 +1,4 @@
-# Car Pool – Kanha Shanti Vanam Community
+# Kanha Car Pool – Kanha Shanti Vanam Community
 
 A mobile-friendly car pool app for the Hyderabad community near Kanha Shanti Vanam. Drivers offer rides; riders request to join. Approved riders can live-track the driver’s location on the way.
 

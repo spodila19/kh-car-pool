@@ -8,7 +8,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: 'Car Pool | Kanha Shanti Vanam Community',
+  title: 'Kanha Car Pool | Kanha Shanti Vanam Community',
   description: 'Share rides with your community. Hyderabad – Kanha Shanti Vanam.',
 };
 

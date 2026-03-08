@@ -16,7 +16,7 @@ export default async function DashboardLayout({
       <header className="sticky top-0 z-10 bg-white/90 dark:bg-slate-800/90 backdrop-blur border-b border-slate-200 dark:border-slate-700 safe-bottom">
         <div className="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
           <Link href="/dashboard" className="font-semibold text-slate-800 dark:text-slate-200">
-            Car Pool
+            Kanha Car Pool
           </Link>
           <nav className="flex items-center gap-4">
             <Link href="/dashboard/rides/new" className="text-primary-600 dark:text-primary-400 text-sm font-medium">

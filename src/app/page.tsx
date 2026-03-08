@@ -11,7 +11,7 @@ export default async function HomePage() {
       <main className="min-h-screen flex flex-col items-center justify-center p-6 bg-gradient-to-b from-primary-50 to-white dark:from-slate-900 dark:to-slate-800">
         <div className="text-center max-w-sm">
           <h1 className="text-3xl font-bold text-primary-700 dark:text-primary-400 mb-2">
-            Car Pool
+            Kanha Car Pool
           </h1>
           <p className="text-slate-600 dark:text-slate-400 mb-6">
             Kanha Shanti Vanam Community · Share rides, save the planet.
