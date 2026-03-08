@@ -1,0 +1,79 @@
+'use client';
+
+import { useEffect, useState, useRef } from 'react';
+import { createClient } from '@/lib/supabase/client';
+import type { DriverLocation } from '@/lib/types';
+
+const DEFAULT_CENTER: [number, number] = [17.385, 78.4867];
+const DEFAULT_ZOOM = 12;
+
+export default function TrackMap({ rideId, isDriver }: { rideId: string; isDriver: boolean }) {
+  const [location, setLocation] = useState<DriverLocation | null>(null);
+  const [mapEl, setMapEl] = useState<HTMLDivElement | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mapRef = useRef<{ map: any; marker: any } | null>(null);
+  const supabase = createClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`driver_location:${rideId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'driver_locations', filter: `ride_id=eq.${rideId}` },
+        (payload) => {
+          const row = payload.new as DriverLocation;
+          if (row) setLocation(row);
+        }
+      )
+      .subscribe();
+
+    supabase.from('driver_locations').select('*').eq('ride_id', rideId).single().then(({ data }) => {
+      if (data) setLocation(data as DriverLocation);
+    });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [rideId, supabase]);
+
+  useEffect(() => {
+    if (!mapEl || typeof window === 'undefined') return;
+    import('leaflet').then((L) => {
+      const map = L.default.map(mapEl).setView(DEFAULT_CENTER, DEFAULT_ZOOM);
+      L.default.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap',
+      }).addTo(map);
+      let marker: ReturnType<typeof L.default.marker> | null = null;
+      mapRef.current = { map, marker };
+    });
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.map.remove();
+        mapRef.current = null;
+      }
+    };
+  }, [mapEl]);
+
+  useEffect(() => {
+    const ref = mapRef.current;
+    if (!ref || !location) return;
+    import('leaflet').then((L) => {
+      if (!ref.marker) {
+        ref.marker = L.default.marker([location.lat, location.lng])
+          .addTo(ref.map)
+          .bindPopup(isDriver ? 'Your location' : 'Driver');
+      } else {
+        ref.marker.setLatLng([location.lat, location.lng]);
+      }
+      ref.map.setView([location.lat, location.lng], ref.map.getZoom());
+    });
+  }, [location, isDriver]);
+
+  return (
+    <div
+      ref={setMapEl}
+      className="w-full h-full min-h-[300px]"
+      style={{ minHeight: '60vh' }}
+    />
+  );
+}
