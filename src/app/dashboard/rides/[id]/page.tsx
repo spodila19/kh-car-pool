@@ -6,6 +6,7 @@ import { RequestRideButton } from './RequestRideButton';
 import { LiveTrackLink } from './LiveTrackLink';
 import { ApproveRejectButtons } from './ApproveRejectButtons';
 import { DriverRideActions } from './DriverRideActions';
+import { EndRideButton } from './EndRideButton';
 
 export default async function RideDetailPage({
   params,
@@ -94,6 +95,12 @@ export default async function RideDetailPage({
         {(isDriver || isApproved) && ride.status === 'active' && (
           <div className="p-4 bg-primary-50 dark:bg-primary-900/20 border-b border-slate-200 dark:border-slate-700">
             <LiveTrackLink rideId={ride.id} isDriver={isDriver} />
+            {isDriver && <EndRideButton rideId={ride.id} />}
+          </div>
+        )}
+        {ride.status === 'completed' && (
+          <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-700/30">
+            <p className="text-sm text-slate-600 dark:text-slate-400">This ride has been completed.</p>
           </div>
         )}
 
