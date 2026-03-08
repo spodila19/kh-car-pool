@@ -15,8 +15,8 @@ const MARKER_ICON = {
   iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
   shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
+  iconSize: [25, 41] as [number, number],
+  iconAnchor: [12, 41] as [number, number],
 };
 
 export default function TrackMap({ rideId, isDriver }: { rideId: string; isDriver: boolean }) {
