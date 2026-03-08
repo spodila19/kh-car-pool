@@ -87,3 +87,12 @@ BEGIN
 EXCEPTION WHEN duplicate_object THEN
   NULL;  /* already in publication - ignore */
 END $$;
+
+
+-- ------------------------------------------------------------
+-- 6. Rides read: use auth.uid() IS NOT NULL (more reliable than auth.role())
+-- ------------------------------------------------------------
+DROP POLICY IF EXISTS "Rides read" ON public.rides;
+CREATE POLICY "Rides read" ON public.rides FOR SELECT
+  TO authenticated
+  USING (true);

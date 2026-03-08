@@ -2,24 +2,24 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import { format } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage() {
   const supabase = await createClient();
   const { data: rides } = await supabase
     .from('rides')
-    .select(`
-      id,
-      from_place,
-      to_place,
-      departure_time,
-      seats_available,
-      seats_total,
-      status,
-      profiles ( display_name )
-    `)
+    .select('id, from_place, to_place, departure_time, seats_available, seats_total, status, driver_id')
     .gte('departure_time', new Date().toISOString())
     .in('status', ['scheduled', 'active'])
     .order('departure_time', { ascending: true })
     .limit(50);
+
+  const driverIds = Array.from(new Set((rides ?? []).map((r: { driver_id: string }) => r.driver_id)));
+  const { data: profiles } =
+    driverIds.length > 0
+      ? await supabase.from('profiles').select('id, display_name').in('id', driverIds)
+      : { data: [] };
+  const profileMap = Object.fromEntries((profiles ?? []).map((p: { id: string; display_name: string }) => [p.id, p.display_name]));
 
   return (
     <div>
@@ -55,7 +55,7 @@ export default async function DashboardPage() {
                       {format(new Date(ride.departure_time), 'EEE, d MMM · h:mm a')}
                     </p>
                     <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
-                      {ride.profiles?.display_name ?? 'Ride host'} · {ride.seats_available} of {ride.seats_total ?? ride.seats_available} seat{(ride.seats_total ?? ride.seats_available) !== 1 ? 's' : ''} remaining
+                      {profileMap[ride.driver_id] ?? 'Ride host'} · {ride.seats_available} of {ride.seats_total ?? ride.seats_available} seat{(ride.seats_total ?? ride.seats_available) !== 1 ? 's' : ''} remaining
                     </p>
                   </div>
                   <span
