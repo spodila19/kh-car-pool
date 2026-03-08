@@ -6,10 +6,14 @@ create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   phone text,
   display_name text not null default 'Rider',
+  show_phone boolean not null default true,
   is_driver boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+-- For existing projects: add show_phone if you already ran the schema before
+-- ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS show_phone boolean NOT NULL DEFAULT true;
 
 -- Rides offered by drivers
 create table if not exists public.rides (

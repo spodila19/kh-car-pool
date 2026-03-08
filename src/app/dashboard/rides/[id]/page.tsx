@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { RequestRideButton } from './RequestRideButton';
 import { LiveTrackLink } from './LiveTrackLink';
 import { ApproveRejectButtons } from './ApproveRejectButtons';
+import { DriverRideActions } from './DriverRideActions';
 
 export default async function RideDetailPage({
   params,
@@ -16,11 +17,17 @@ export default async function RideDetailPage({
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) notFound();
 
+  const { data: myProfile } = await supabase
+    .from('profiles')
+    .select('phone')
+    .eq('id', user.id)
+    .single();
+
   const { data: ride } = await supabase
     .from('rides')
     .select(`
       *,
-      profiles ( display_name, phone )
+      profiles ( display_name, phone, show_phone )
     `)
     .eq('id', id)
     .single();
@@ -35,7 +42,7 @@ export default async function RideDetailPage({
       pickup_place,
       status,
       created_at,
-      profiles ( display_name, phone )
+      profiles ( display_name, phone, show_phone )
     `)
     .eq('ride_id', id)
     .order('created_at', { ascending: false });
@@ -44,6 +51,7 @@ export default async function RideDetailPage({
   const isDriver = ride.driver_id === user.id;
   const isApproved = myRequest?.status === 'approved';
   const canRequest = !isDriver && !myRequest && ride.status !== 'cancelled' && ride.seats_available > 0;
+  const hasPhone = !!myProfile?.phone?.trim();
 
   return (
     <div>
@@ -60,7 +68,7 @@ export default async function RideDetailPage({
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Driver: {ride.profiles?.display_name ?? '—'}
-            {ride.profiles?.phone && (
+            {ride.profiles?.show_phone !== false && ride.profiles?.phone && (
               <span className="ml-2">· {ride.profiles.phone}</span>
             )}
           </p>
@@ -72,13 +80,31 @@ export default async function RideDetailPage({
           )}
         </div>
 
-        {(isDriver || isApproved) && (ride.status === 'scheduled' || ride.status === 'active') && (
+        {isDriver && ride.status === 'scheduled' && (
+          <div className="p-4 border-b border-slate-200 dark:border-slate-700">
+            <h3 className="font-medium text-slate-800 dark:text-slate-200 mb-3">Ready to go?</h3>
+            <DriverRideActions rideId={ride.id} />
+          </div>
+        )}
+        {isDriver && ride.status === 'cancelled' && (
+          <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-700/30">
+            <p className="text-sm text-slate-600 dark:text-slate-400">This ride has been cancelled.</p>
+          </div>
+        )}
+        {(isDriver || isApproved) && ride.status === 'active' && (
           <div className="p-4 bg-primary-50 dark:bg-primary-900/20 border-b border-slate-200 dark:border-slate-700">
             <LiveTrackLink rideId={ride.id} isDriver={isDriver} />
           </div>
         )}
 
-        {canRequest && (
+        {canRequest && !hasPhone && (
+          <div className="p-4 border-b border-slate-200 dark:border-slate-700 bg-amber-50 dark:bg-amber-900/20">
+            <p className="text-sm text-amber-800 dark:text-amber-200">
+              Add your <Link href="/dashboard/profile" className="underline font-medium">mobile number in Profile</Link> to request to join this ride.
+            </p>
+          </div>
+        )}
+        {canRequest && hasPhone && (
           <div className="p-4 border-b border-slate-200 dark:border-slate-700">
             <RequestRideButton rideId={ride.id} />
           </div>
@@ -103,10 +129,13 @@ export default async function RideDetailPage({
                 >
                   <div>
                     <p className="font-medium text-slate-800 dark:text-slate-200">
-                      {req.profiles?.display_name ?? 'Rider'}
+                      {req.profiles?.display_name ?? 'Requester'}
                     </p>
                     {req.pickup_place && (
                       <p className="text-xs text-slate-500">Pickup: {req.pickup_place}</p>
+                    )}
+                    {req.status === 'approved' && req.profiles?.show_phone !== false && req.profiles?.phone && (
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">📞 {req.profiles.phone}</p>
                     )}
                   </div>
                   <ApproveRejectButtons

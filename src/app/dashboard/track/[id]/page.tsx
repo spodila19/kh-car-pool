@@ -12,7 +12,7 @@ export default function TrackPage() {
   const params = useParams();
   const router = useRouter();
   const rideId = params?.id as string;
-  const [ride, setRide] = useState<{ from_place: string; to_place: string; driver_id: string } | null>(null);
+  const [ride, setRide] = useState<{ from_place: string; to_place: string; driver_id: string; status: string } | null>(null);
   const [isDriver, setIsDriver] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const supabase = createClient();
@@ -28,7 +28,7 @@ export default function TrackPage() {
       }
       const { data: rideData } = await supabase
         .from('rides')
-        .select('from_place, to_place, driver_id')
+        .select('from_place, to_place, driver_id, status')
         .eq('id', rideId)
         .single();
       if (!rideData) {
@@ -45,6 +45,12 @@ export default function TrackPage() {
         .single();
       if (!driver && !approved) {
         setError('You can only track this ride after your request is approved.');
+        return;
+      }
+      if (rideData.status !== 'active') {
+        setError(driver
+          ? 'Start the ride from the ride page to begin sharing your location.'
+          : 'Live tracking is available after the driver starts the ride.');
         return;
       }
       setRide(rideData);

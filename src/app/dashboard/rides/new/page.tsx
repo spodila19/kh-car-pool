@@ -1,14 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 export default function NewRidePage() {
   const router = useRouter();
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasPhone, setHasPhone] = useState<boolean | null>(null);
   const [form, setForm] = useState({
     from_place: 'Kanha Shanti Vanam',
     to_place: '',
@@ -17,6 +19,15 @@ export default function NewRidePage() {
     seats_available: 3,
     notes: '',
   });
+
+  useEffect(() => {
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase.from('profiles').select('phone').eq('id', user.id).single();
+      setHasPhone(!!data?.phone?.trim());
+    })();
+  }, [supabase]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -48,6 +59,24 @@ export default function NewRidePage() {
   }
 
   const today = new Date().toISOString().slice(0, 10);
+
+  if (hasPhone === null) {
+    return (
+      <div className="py-8 text-center text-slate-500">Loading…</div>
+    );
+  }
+  if (!hasPhone) {
+    return (
+      <div>
+        <h1 className="text-xl font-bold text-slate-800 dark:text-slate-200 mb-4">Offer a ride</h1>
+        <div className="rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 p-4">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            Add your <Link href="/dashboard/profile" className="underline font-medium">mobile number in Profile</Link> (required) to offer a ride.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

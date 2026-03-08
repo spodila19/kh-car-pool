@@ -5,6 +5,7 @@ export interface Profile {
   id: string;
   phone: string | null;
   display_name: string;
+  show_phone: boolean;
   is_driver: boolean;
   created_at: string;
   updated_at: string;
@@ -25,7 +26,7 @@ export interface Ride {
   notes: string | null;
   created_at: string;
   updated_at: string;
-  profiles?: { display_name: string; phone: string | null } | null;
+  profiles?: { display_name: string; phone: string | null; show_phone: boolean } | null;
 }
 
 export interface RideRequest {
@@ -37,7 +38,7 @@ export interface RideRequest {
   pickup_lng: number | null;
   status: RequestStatus;
   created_at: string;
-  profiles?: { display_name: string; phone: string | null } | null;
+  profiles?: { display_name: string; phone: string | null; show_phone: boolean } | null;
 }
 
 export interface DriverLocation {
