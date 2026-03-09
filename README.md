@@ -73,6 +73,15 @@ Use **only free tiers**; no credit card required.
   - One Supabase project. Free tier includes PostgreSQL, Auth (email magic link), Realtime.  
   - No separate backend server or paid APIs.
 
+### Email for 50+ users (required for production)
+
+Supabase’s built-in SMTP allows about **4 emails per hour**. If users see “email rate limit exceeded”:
+
+1. **Supabase Dashboard** → **Authentication** → **Rate Limits** — increase `rate_limit_otp` if available.
+2. **Custom SMTP** (recommended for production): **Project Settings** → **Auth** → **SMTP** — configure your own SMTP (e.g. Resend, SendGrid) to bypass Supabase’s limits.
+
+**For 50+ users:** See [docs/SMTP_SETUP.md](docs/SMTP_SETUP.md) for step-by-step Resend, Brevo, or SendGrid setup.
+
 ### Staying on free tiers
 
 - **Supabase**: Stay within free limits (e.g. 500MB database, 50K monthly active users). Monitor usage in the dashboard.
